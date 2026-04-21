@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { RouterView, useRouter } from 'vue-router'
+import { RouterView, useRoute, useRouter } from 'vue-router'
 import { useDisplay } from 'vuetify'
 
 import { usePosStore } from '@/stores/pos'
@@ -10,6 +10,7 @@ import { formatCurrency } from '@/utils/format'
 const store = usePosStore()
 const authStore = useAuthStore()
 const router = useRouter()
+const route = useRoute()
 const display = useDisplay()
 const drawer = ref(true)
 
@@ -43,6 +44,8 @@ const navItems = computed(() => {
   }
 })
 
+const showShell = computed(() => route.meta.hideShell !== true)
+
 const startNewOrder = () => {
   store.startNewOrder()
 }
@@ -55,7 +58,7 @@ const handleLogout = () => {
 
 <template>
   <v-app>
-    <v-layout class="pos-shell">
+    <v-layout v-if="showShell" class="pos-shell">
       <v-navigation-drawer
         v-model="drawer"
         :temporary="isMobile"
@@ -129,6 +132,8 @@ const handleLogout = () => {
         </v-container>
       </v-main>
     </v-layout>
+
+    <RouterView v-else />
   </v-app>
 </template>
 
@@ -139,7 +144,7 @@ const handleLogout = () => {
 
 .pos-drawer {
   border-right: 1px solid var(--pos-border);
-  background: linear-gradient(160deg, #fff7ed 0%, #ffffff 42%, #f1f5f9 100%);
+  background: linear-gradient(160deg, #fff7ed 0%, #ffffff 45%, #fef3c7 100%);
 }
 
 .brand {
@@ -153,7 +158,7 @@ const handleLogout = () => {
   width: 44px;
   height: 44px;
   border-radius: 12px;
-  background: #1b3a57;
+  background: var(--pos-accent);
   color: #ffffff;
   font-weight: 700;
   display: grid;
@@ -179,7 +184,7 @@ const handleLogout = () => {
 .pos-status {
   padding: 16px;
   border-radius: var(--pos-radius-lg);
-  background: #0f172a;
+  background: var(--pos-navy);
   color: #ffffff;
 }
 

@@ -1,13 +1,15 @@
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=Space+Grotesk:wght@400;500;600;700&family=Urbanist:wght@400;500;600;700;800&display=swap');
 
 :root {
-  --pos-ink: #0f172a;
-  --pos-muted: #475569;
-  --pos-border: #e2e8f0;
-  --pos-sand: #f7f4ef;
+  --pos-ink: #1f2937;
+  --pos-muted: #6b7280;
+  --pos-border: #e5e7eb;
+  --pos-sand: #faf7f2;
   --pos-card: #ffffff;
   --pos-accent: #d97706;
-  --pos-teal: #0f766e;
+  --pos-accent-strong: #b45309;
+  --pos-accent-soft: #fef3c7;
+  --pos-navy: #1f2a44;
   --pos-shadow: rgba(15, 23, 42, 0.08);
   --pos-radius: 18px;
   --pos-radius-lg: 26px;
@@ -28,10 +30,10 @@ body {
   min-height: 100vh;
   color: var(--pos-ink);
   background:
-    radial-gradient(1000px 600px at 8% -10%, #fff4e5 0%, transparent 60%),
-    radial-gradient(900px 500px at 92% 8%, #dbeafe 0%, transparent 55%), var(--pos-sand);
+    radial-gradient(1000px 600px at 8% -10%, #fff1e6 0%, transparent 60%),
+    radial-gradient(900px 500px at 92% 8%, #fff7ed 0%, transparent 55%), var(--pos-sand);
   line-height: 1.6;
-  font-family: 'Space Grotesk', 'Segoe UI', system-ui, sans-serif;
+  font-family: 'Urbanist', 'Space Grotesk', 'Segoe UI', system-ui, sans-serif;
   font-size: 15px;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;

@@ -110,6 +110,56 @@ app.post('/api/auth/login', async (req, res) => {
   }
 })
 
+// Auth endpoint: owner/admin sign-up
+app.post('/api/auth/signup', async (req, res) => {
+  const { username, password, firstName, lastName, phone, email, country } = req.body || {}
+
+  if (!username || !password || !firstName || !lastName || !phone || !country) {
+    return res.status(400).json({
+      message: 'Username, password, first name, last name, phone, and country are required',
+    })
+  }
+
+  try {
+    const hashedPassword = await bcrypt.hash(password, 10)
+
+    const existing = await pool.query('SELECT id, password_hash FROM users WHERE username = $1', [
+      username,
+    ])
+
+    if (existing.rows.length > 0) {
+      const user = existing.rows[0]
+      if (!user.password_hash) {
+        const updated = await pool.query(
+          `UPDATE users
+           SET password_hash = $1, role = 'manager', first_name = $2, last_name = $3,
+               phone = $4, email = $5, country = $6, is_active = true
+           WHERE id = $7
+           RETURNING id, username, role`,
+          [hashedPassword, firstName, lastName, phone, email || null, country, user.id],
+        )
+        return res.status(201).json(updated.rows[0])
+      }
+      return res.status(409).json({ message: 'Username already exists' })
+    }
+
+    const result = await pool.query(
+      `INSERT INTO users (username, password_hash, role, is_active, first_name, last_name, phone, email, country)
+       VALUES ($1, $2, 'manager', true, $3, $4, $5, $6, $7)
+       RETURNING id, username, role`,
+      [username, hashedPassword, firstName, lastName, phone, email || null, country],
+    )
+
+    res.status(201).json(result.rows[0])
+  } catch (error) {
+    if (error.code === '23505') {
+      res.status(409).json({ message: 'Username already exists' })
+    } else {
+      res.status(500).json({ message: error.message })
+    }
+  }
+})
+
 // Auth endpoint: create new user (manager only)
 app.post('/api/auth/users', authMiddleware, managerOnly, async (req, res) => {
   const { username, password, role } = req.body || {}
@@ -139,6 +189,59 @@ app.post('/api/auth/users', authMiddleware, managerOnly, async (req, res) => {
     }
   }
 })
+
+// Onboarding status (manager only)
+app.get('/api/onboarding/status', authMiddleware, managerOnly, async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT onboarding_completed FROM business_profile WHERE id = 1',
+    )
+    const status = result.rows[0] || { onboarding_completed: false }
+    res.json({ onboardingCompleted: Boolean(status.onboarding_completed) })
+  } catch (error) {
+    res.status(500).json({ message: error.message })
+  }
+})
+
+// Onboarding profile (manager only)
+app.get('/api/onboarding/profile', authMiddleware, managerOnly, async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM business_profile WHERE id = 1')
+    res.json(result.rows[0] || null)
+  } catch (error) {
+    res.status(500).json({ message: error.message })
+  }
+})
+
+// Complete onboarding (manager only)
+app.post('/api/onboarding/complete', authMiddleware, managerOnly, async (req, res) => {
+  const { storeName, address, phone, email, currency, taxRate } = req.body || {}
+
+  if (!storeName || !phone) {
+    return res.status(400).json({ message: 'Store name and phone are required.' })
+  }
+
+  try {
+    await pool.query(
+      `UPDATE business_profile
+       SET store_name = $1,
+           address = $2,
+           phone = $3,
+           email = $4,
+           currency = $5,
+           tax_rate = $6,
+           onboarding_completed = true,
+           updated_at = now()
+       WHERE id = 1`,
+      [storeName, address || null, phone, email || null, currency || 'GHS', taxRate || 0],
+    )
+
+    res.json({ ok: true })
+  } catch (error) {
+    res.status(500).json({ message: error.message })
+  }
+})
+const mapReceipts = (rows) => {
   const receiptMap = new Map()
 
   rows.forEach((row) => {

@@ -28,11 +28,11 @@ const vuetify = createVuetify({
       diagonLight: {
         dark: false,
         colors: {
-          background: '#f7f4ef',
+          background: '#faf7f2',
           surface: '#ffffff',
-          primary: '#1b3a57',
-          secondary: '#d97706',
-          tertiary: '#0f766e',
+          primary: '#d97706',
+          secondary: '#1f2a44',
+          tertiary: '#fef3c7',
           info: '#1d4ed8',
           success: '#15803d',
           warning: '#b45309',

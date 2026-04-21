@@ -8,7 +8,13 @@ const router = createRouter({
       path: '/login',
       name: 'login',
       component: () => import('../views/LoginView.vue'),
-      meta: { requiresAuth: false },
+      meta: { requiresAuth: false, hideShell: true },
+    },
+    {
+      path: '/signup',
+      name: 'signup',
+      component: () => import('../views/SignupView.vue'),
+      meta: { requiresAuth: false, hideShell: true },
     },
     {
       path: '/',
@@ -22,6 +28,12 @@ const router = createRouter({
       name: 'dashboard',
       component: () => import('../views/DashboardView.vue'),
       meta: { requiresAuth: true, requiresManager: true },
+    },
+    {
+      path: '/onboarding',
+      name: 'onboarding',
+      component: () => import('../views/OnboardingView.vue'),
+      meta: { requiresAuth: true, requiresManager: true, hideShell: true },
     },
     {
       path: '/sales',
@@ -69,10 +81,11 @@ const router = createRouter({
 })
 
 // Navigation Guard for authentication and authorization
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
   const requiresAuth = to.meta.requiresAuth !== false
   const requiresManager = to.meta.requiresManager === true
+  const isAuthRoute = to.path === '/login' || to.path === '/signup'
 
   // If route requires auth but user is not authenticated, redirect to login
   if (requiresAuth && !authStore.isAuthenticated) {
@@ -80,10 +93,25 @@ router.beforeEach((to, from, next) => {
     return
   }
 
+  if (authStore.isAuthenticated && isAuthRoute) {
+    next(authStore.isManager ? '/dashboard' : '/sales')
+    return
+  }
+
   // If route requires manager role but user is cashier, redirect to sales
   if (requiresManager && authStore.isCashier) {
     next('/sales')
     return
+  }
+
+  if (authStore.isManager && authStore.isAuthenticated && to.path !== '/onboarding') {
+    if (!authStore.onboardingCompleted) {
+      await authStore.fetchOnboardingStatus()
+    }
+    if (!authStore.onboardingCompleted) {
+      next('/onboarding')
+      return
+    }
   }
 
   next()
