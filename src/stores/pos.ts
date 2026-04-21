@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 
 import { sampleProducts } from '@/data/products'
-import { createOrder, getProducts, getReceipts } from '@/api/pos'
+import { createOrder, getProducts, getReceipts, createProduct } from '@/api/pos'
 import type {
   CartItem,
   CustomerInfo,
@@ -216,6 +216,34 @@ export const usePosStore = defineStore('pos', {
       this.clearCart()
       this.resetPayment()
       this.customer = { ...defaultCustomer }
+    },
+    async addProduct(productData: {
+      sku: string
+      name: string
+      category: string
+      price: number
+      cost?: number | null
+      stock?: number
+      barcode?: string
+    }) {
+      try {
+        const newProduct = await createProduct(productData)
+        if (newProduct && newProduct.id) {
+          this.products.push({
+            id: newProduct.id,
+            sku: newProduct.sku,
+            name: newProduct.name,
+            category: newProduct.category,
+            price: Number(newProduct.price),
+            stock: Number(newProduct.stock || 0),
+          })
+          return true
+        }
+      } catch (error) {
+        console.error('Failed to add product', error)
+        throw error
+      }
+      return false
     },
   },
 })

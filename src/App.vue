@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { RouterView } from 'vue-router'
+import { RouterView, useRouter } from 'vue-router'
 import { useDisplay } from 'vuetify'
 
 import { usePosStore } from '@/stores/pos'
+import { useAuthStore } from '@/stores/auth'
 import { formatCurrency } from '@/utils/format'
 
 const store = usePosStore()
+const authStore = useAuthStore()
+const router = useRouter()
 const display = useDisplay()
 const drawer = ref(true)
 
@@ -22,18 +25,31 @@ const isMobile = computed(() => display.mobile.value)
 const orderTotal = computed(() => store.total)
 const orderCount = computed(() => store.cartCount)
 
-const navItems = [
-  { title: 'Dashboard', to: '/dashboard', icon: 'mdi-view-dashboard-variant' },
-  { title: 'Products', to: '/products', icon: 'mdi-storefront-outline' },
-  { title: 'Checkout', to: '/checkout', icon: 'mdi-cart-check' },
-  { title: 'Payments', to: '/payments', icon: 'mdi-credit-card-outline' },
-  { title: 'Receipts', to: '/receipts', icon: 'mdi-receipt-text-outline' },
-  { title: 'Reports', to: '/reports', icon: 'mdi-chart-line' },
-  { title: 'Settings', to: '/settings', icon: 'mdi-tune-variant' },
+const allNavItems = [
+  { title: 'Dashboard', to: '/dashboard', icon: 'mdi-view-dashboard-variant', manager: true },
+  { title: 'Customer Cart', to: '/sales', icon: 'mdi-shopping-cart', manager: false },
+  { title: 'Inventory', to: '/inventory', icon: 'mdi-warehouse', manager: false },
+  { title: 'Receipts', to: '/receipts', icon: 'mdi-receipt-text-outline', manager: false },
+  { title: 'Reports', to: '/reports', icon: 'mdi-chart-line', manager: true },
+  { title: 'Settings', to: '/settings', icon: 'mdi-tune-variant', manager: true },
 ]
+
+const navItems = computed(() => {
+  if (authStore.isManager) {
+    return allNavItems
+  } else {
+    // Cashiers only see non-manager items
+    return allNavItems.filter((item) => !item.manager)
+  }
+})
 
 const startNewOrder = () => {
   store.startNewOrder()
+}
+
+const handleLogout = () => {
+  authStore.logout()
+  router.push('/login')
 }
 </script>
 
@@ -85,8 +101,26 @@ const startNewOrder = () => {
         <v-app-bar-nav-icon class="d-lg-none" @click="drawer = !drawer" />
         <v-toolbar-title class="pos-title">Sales command center</v-toolbar-title>
         <v-spacer />
-        <v-chip color="secondary" variant="flat" class="mr-2">Shop open</v-chip>
-        <v-btn to="/checkout" color="primary" variant="flat">Checkout</v-btn>
+        <v-chip color="secondary" variant="flat" class="mr-2">
+          {{ authStore.isManager ? 'Manager' : 'Cashier' }}
+        </v-chip>
+        <v-menu location="bottom end">
+          <template #activator="{ props }">
+            <v-btn v-bind="props" icon="mdi-account-circle" />
+          </template>
+          <v-list min-width="200">
+            <v-list-item readonly>
+              <div class="text-caption text-disabled">{{ authStore.user?.username }}</div>
+            </v-list-item>
+            <v-divider />
+            <v-list-item @click="handleLogout">
+              <template #prepend>
+                <v-icon icon="mdi-logout" />
+              </template>
+              <v-list-item-title>Logout</v-list-item-title>
+            </v-list-item>
+          </v-list>
+        </v-menu>
       </v-app-bar>
 
       <v-main>

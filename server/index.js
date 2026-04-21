@@ -1,14 +1,18 @@
 import express from 'express'
+import jwt from 'jsonwebtoken'
+import bcrypt from 'bcrypt'
+import crypto from 'crypto'
 
 import { pool } from './db.js'
 
 const app = express()
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production'
 
 app.use(express.json())
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', process.env.CORS_ORIGIN || '*')
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS,PUT')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization')
   if (req.method === 'OPTIONS') {
     res.sendStatus(204)
     return
@@ -16,7 +20,125 @@ app.use((req, res, next) => {
   next()
 })
 
-const mapReceipts = (rows) => {
+// Middleware to extract and validate JWT token
+const authMiddleware = (req, res, next) => {
+  const authHeader = req.headers.authorization
+  const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null
+
+  if (!token) {
+    return res.status(401).json({ message: 'Missing authorization token' })
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET)
+    req.user = decoded
+    next()
+  } catch (error) {
+    res.status(401).json({ message: 'Invalid or expired token' })
+  }
+}
+
+// Middleware to require manager role
+const managerOnly = (req, res, next) => {
+  if (!req.user || req.user.role !== 'manager') {
+    return res.status(403).json({ message: 'This action requires manager role' })
+  }
+  next()
+}
+
+// Auth endpoint: login with username and password
+app.post('/api/auth/login', async (req, res) => {
+  const { username, password } = req.body || {}
+
+  if (!username || !password) {
+    return res.status(400).json({ message: 'Username and password required' })
+  }
+
+  try {
+    const result = await pool.query(
+      'SELECT id, username, password_hash, role, is_active FROM users WHERE username = $1',
+      [username],
+    )
+
+    if (result.rows.length === 0) {
+      return res.status(401).json({ message: 'Invalid username or password' })
+    }
+
+    const user = result.rows[0]
+
+    if (!user.is_active) {
+      return res.status(401).json({ message: 'User account is inactive' })
+    }
+
+    // If password_hash is empty (default admin user), set it on first login
+    if (!user.password_hash || user.password_hash === '') {
+      const hashedPassword = await bcrypt.hash(password, 10)
+      await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [
+        hashedPassword,
+        user.id,
+      ])
+      user.password_hash = hashedPassword
+    }
+
+    // Compare provided password with stored hash
+    const isValidPassword = await bcrypt.compare(password, user.password_hash)
+    if (!isValidPassword) {
+      return res.status(401).json({ message: 'Invalid username or password' })
+    }
+
+    // Generate JWT token
+    const token = jwt.sign(
+      {
+        id: user.id,
+        username: user.username,
+        role: user.role,
+      },
+      JWT_SECRET,
+      { expiresIn: '24h' },
+    )
+
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        username: user.username,
+        role: user.role,
+      },
+    })
+  } catch (error) {
+    res.status(500).json({ message: error.message })
+  }
+})
+
+// Auth endpoint: create new user (manager only)
+app.post('/api/auth/users', authMiddleware, managerOnly, async (req, res) => {
+  const { username, password, role } = req.body || {}
+
+  if (!username || !password || !role) {
+    return res.status(400).json({ message: 'Username, password, and role required' })
+  }
+
+  if (!['cashier', 'manager'].includes(role)) {
+    return res.status(400).json({ message: 'Role must be "cashier" or "manager"' })
+  }
+
+  try {
+    const hashedPassword = await bcrypt.hash(password, 10)
+
+    const result = await pool.query(
+      'INSERT INTO users (username, password_hash, role, is_active) VALUES ($1, $2, $3, $4) RETURNING id, username, role',
+      [username, hashedPassword, role, true],
+    )
+
+    res.status(201).json(result.rows[0])
+  } catch (error) {
+    if (error.code === '23505') {
+      res.status(409).json({ message: 'Username already exists' })
+    } else {
+      res.status(500).json({ message: error.message })
+    }
+  }
+})
   const receiptMap = new Map()
 
   rows.forEach((row) => {
@@ -107,10 +229,10 @@ app.get('/api/health', async (req, res) => {
   }
 })
 
-app.get('/api/products', async (req, res) => {
+app.get('/api/products', authMiddleware, async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT id, sku, name, category, price, stock
+      `SELECT id, sku, name, category, price, stock, barcode, cost
        FROM products
        WHERE is_active = true
        ORDER BY category, name`,
@@ -123,6 +245,8 @@ app.get('/api/products', async (req, res) => {
         category: row.category,
         price: Number(row.price),
         stock: Number(row.stock),
+        barcode: row.barcode,
+        cost: row.cost ? Number(row.cost) : null,
       })),
     )
   } catch (error) {
@@ -130,7 +254,40 @@ app.get('/api/products', async (req, res) => {
   }
 })
 
-app.get('/api/receipts', async (req, res) => {
+// Create a new product (cashier and manager)
+app.post('/api/products', authMiddleware, async (req, res) => {
+  const { sku, name, category, price, stock, barcode, cost } = req.body || {}
+
+  if (!sku || !name || !category || !price) {
+    return res
+      .status(400)
+      .json({ message: 'SKU, name, category, and price are required' })
+  }
+
+  try {
+    const result = await pool.query(
+      `INSERT INTO products (id, sku, name, category, price, stock, barcode, cost, is_active)
+       VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, true)
+       RETURNING id, sku, name, category, price, stock, barcode, cost`,
+      [sku, name, category, price, stock ? Number(stock) : 0, barcode || null, cost ? Number(cost) : null],
+    )
+
+    res.status(201).json({
+      ...result.rows[0],
+      price: Number(result.rows[0].price),
+      stock: Number(result.rows[0].stock),
+      cost: result.rows[0].cost ? Number(result.rows[0].cost) : null,
+    })
+  } catch (error) {
+    if (error.code === '23505') {
+      res.status(409).json({ message: 'SKU or barcode already exists' })
+    } else {
+      res.status(500).json({ message: error.message })
+    }
+  }
+})
+
+app.get('/api/receipts', authMiddleware, async (req, res) => {
   try {
     const receipts = await getReceipts()
     res.json(receipts)
@@ -139,7 +296,7 @@ app.get('/api/receipts', async (req, res) => {
   }
 })
 
-app.post('/api/orders', async (req, res) => {
+app.post('/api/orders', authMiddleware, async (req, res) => {
   const { customer, items, totals, payment } = req.body || {}
 
   if (!Array.isArray(items) || items.length === 0) {
