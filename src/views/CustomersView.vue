@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 
-import { createCustomer, getReceipts, searchCustomers } from '../../api/pos'
+import { createCustomer, getReceipts, searchCustomers } from '@/api/pos'
 import { usePosStore } from '@/stores/pos'
 import { formatCurrency } from '@/utils/format'
 import type { Receipt } from '@/types/pos'

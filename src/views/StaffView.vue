@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { deleteStaff, getStaff, updateStaff } from '../../api/pos'
+import { deleteStaff, getStaff, updateStaff } from '@/api/pos'
 import { useAuthStore } from '@/stores/auth'
 
 const authStore = useAuthStore()

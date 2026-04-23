@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { getSettings, saveSettings } from '../../api/pos'
+import { getSettings, saveSettings } from '@/api/pos'
 import { usePosStore } from '@/stores/pos'
 
 type TabId = 'store' | 'pos' | 'appearance' | 'receipt' | 'payments' | 'security' | 'notifications' | 'data'

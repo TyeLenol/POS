@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 
 import { sampleProducts } from '@/data/products'
-import { createOrder, getProducts, getReceipts, createProduct, updateProduct, deleteProduct } from '../../api/pos'
+import { createOrder, getProducts, getReceipts, createProduct, updateProduct, deleteProduct } from '@/api/pos'
 import type {
   CartItem,
   CustomerInfo,
