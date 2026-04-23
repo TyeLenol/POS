@@ -399,7 +399,7 @@ const paymentIcon = (method: string) => {
           class="icon-btn"
           type="button"
           @click="
-            showAddForm = false
+            showAddForm = false ;
             addError = ''
           "
         >
@@ -437,7 +437,7 @@ const paymentIcon = (method: string) => {
           class="cancel-btn"
           type="button"
           @click="
-            showAddForm = false
+            showAddForm = false ;
             addError = ''
           "
         >
