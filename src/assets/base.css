@@ -28,11 +28,58 @@
   --pos-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
   --pos-sans: 'Inter', system-ui, sans-serif;
 
+  /* ── Appbar glass ── */
+  --pos-appbar-bg: rgba(255, 255, 255, 0.85);
+
   /* ── React template token aliases ── */
   --color-pos-accent-strong: var(--pos-accent-strong);
   --color-pos-accent: var(--pos-accent);
   --color-pos-accent-soft: var(--pos-accent-soft);
   --color-pos-navy: var(--pos-navy);
+  --color-pos-ink: var(--pos-ink);
+  --color-pos-muted: var(--pos-muted);
+  --color-pos-border: var(--pos-border);
+  --bg-color: var(--pos-bg);
+  --surface-color: var(--pos-surface);
+  --text-color: var(--pos-ink);
+  --text-muted: var(--pos-muted);
+  --border-color: var(--pos-border);
+}
+
+/* ── Mid theme (warm candlelit) ── */
+[data-theme='mid'] {
+  --pos-bg: #1c1a15;
+  --pos-surface: #242018;
+  --pos-ink: #e8d5a3;
+  --pos-muted: #9c8b6e;
+  --pos-border: #302b1e;
+  --pos-shadow: rgba(0, 0, 0, 0.2);
+  --pos-sand: #1c1a15;
+  --pos-card: #242018;
+  --pos-accent-soft: rgba(251, 191, 36, 0.15);
+  --pos-appbar-bg: rgba(36, 32, 24, 0.92);
+  --color-pos-ink: var(--pos-ink);
+  --color-pos-muted: var(--pos-muted);
+  --color-pos-border: var(--pos-border);
+  --bg-color: var(--pos-bg);
+  --surface-color: var(--pos-surface);
+  --text-color: var(--pos-ink);
+  --text-muted: var(--pos-muted);
+  --border-color: var(--pos-border);
+}
+
+/* ── Dark theme (cool slate) ── */
+[data-theme='dark'] {
+  --pos-bg: #0f1117;
+  --pos-surface: #181c24;
+  --pos-ink: #e2e8f0;
+  --pos-muted: #8b98aa;
+  --pos-border: #1e2433;
+  --pos-shadow: rgba(0, 0, 0, 0.25);
+  --pos-sand: #0f1117;
+  --pos-card: #181c24;
+  --pos-accent-soft: rgba(251, 191, 36, 0.12);
+  --pos-appbar-bg: rgba(15, 17, 23, 0.92);
   --color-pos-ink: var(--pos-ink);
   --color-pos-muted: var(--pos-muted);
   --color-pos-border: var(--pos-border);

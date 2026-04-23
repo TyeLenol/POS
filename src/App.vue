@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { RouterView, useRoute, useRouter } from 'vue-router'
-import { useDisplay } from 'vuetify'
+import { useDisplay, useTheme as useVuetifyTheme } from 'vuetify'
+import { themeMode, initTheme, cycleTheme } from '@/composables/useTheme'
 
 import { usePosStore } from '@/stores/pos'
 import { useAuthStore } from '@/stores/auth'
@@ -12,6 +13,15 @@ const authStore = useAuthStore()
 const router = useRouter()
 const route = useRoute()
 const display = useDisplay()
+
+const vuetifyTheme = useVuetifyTheme()
+const themeVuetifyMap = { light: 'diagonLight', mid: 'diagonMid', dark: 'diagonDark' } as const
+const themeIcon = computed(() =>
+  ({ light: 'mdi-white-balance-sunny', mid: 'mdi-circle-half-full', dark: 'mdi-moon-waning-crescent' })[themeMode.value],
+)
+initTheme()
+vuetifyTheme.global.name.value = themeVuetifyMap[themeMode.value]
+watch(themeMode, (m) => { vuetifyTheme.global.name.value = themeVuetifyMap[m] })
 
 const mobileOpen = ref(false)
 const isCollapsed = ref(false)
@@ -194,6 +204,9 @@ const handleLogout = () => {
           </div>
 
           <div class="appbar-right">
+            <button class="theme-btn" :title="`Switch theme (${themeMode})`" @click="cycleTheme">
+              <v-icon :icon="themeIcon" size="18" />
+            </button>
             <div
               class="role-chip"
               :class="authStore.isManager ? 'role-chip--mgr' : 'role-chip--cshr'"
@@ -262,7 +275,7 @@ const handleLogout = () => {
   left: 0;
   z-index: 50;
   width: 260px;
-  background: #ffffff;
+  background: var(--pos-surface);
   border-right: 1px solid var(--pos-border);
   border-radius: 0 28px 28px 0;
   box-shadow: 4px 0 24px rgba(0, 0, 0, 0.02);
@@ -491,7 +504,7 @@ const handleLogout = () => {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: #fff;
+  background: var(--pos-surface);
   border: 1px solid var(--pos-border);
   color: var(--pos-muted);
   align-items: center;
@@ -540,7 +553,7 @@ const handleLogout = () => {
   align-items: center;
   justify-content: space-between;
   padding: 0 24px;
-  background: rgba(255, 255, 255, 0.85);
+  background: var(--pos-appbar-bg);
   backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--pos-border);
   position: sticky;
@@ -575,6 +588,21 @@ const handleLogout = () => {
   background: var(--pos-border);
 }
 
+.theme-btn {
+  background: none;
+  border: none;
+  color: var(--pos-muted);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 8px;
+  display: flex;
+  transition: background 0.15s, color 0.15s;
+}
+.theme-btn:hover {
+  background: var(--pos-border);
+  color: var(--pos-accent-strong);
+}
+
 .appbar-right {
   display: flex;
   align-items: center;
@@ -597,7 +625,7 @@ const handleLogout = () => {
   border-color: rgba(245, 158, 11, 0.3);
 }
 .role-chip--cshr {
-  background: #f9fafb;
+  background: var(--pos-border);
   color: var(--pos-muted);
   border-color: var(--pos-border);
 }
@@ -640,7 +668,7 @@ const handleLogout = () => {
   right: 0;
   top: calc(100% + 8px);
   width: 200px;
-  background: #fff;
+  background: var(--pos-surface);
   border: 1px solid var(--pos-border);
   border-radius: 16px;
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
