@@ -1,0 +1,91 @@
+@import "tailwindcss";
+
+@theme {
+  --color-pos-accent-strong: #d97706;
+  --color-pos-accent: #f59e0b;
+  --color-pos-accent-soft: rgba(251, 191, 36, 0.12);
+  --color-pos-navy: #1e3a5f;
+  --color-pos-ink: #111827;
+  --color-pos-muted: #6b7280;
+  --color-pos-border: #f3f4f6;
+
+  --color-wabi-bg: #f9f8f6;
+  --color-wabi-surface: #ffffff;
+  --color-wabi-ink: #2c2a29;
+  
+  --color-wabi-dark-bg: #1a1918;
+  --color-wabi-dark-surface: #262423;
+  --color-wabi-dark-ink: #e8e6e3;
+  --color-wabi-dark-muted: #a09d98;
+  --color-wabi-dark-border: #3d3b3a;
+
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --font-sans: 'Inter', system-ui, sans-serif;
+}
+
+@layer base {
+  :root {
+    --bg-color: var(--color-wabi-bg);
+    --surface-color: var(--color-wabi-surface);
+    --text-color: var(--color-wabi-ink);
+    --text-muted: var(--color-pos-muted);
+    --border-color: var(--color-pos-border);
+  }
+
+  .dark {
+    --bg-color: var(--color-wabi-dark-bg);
+    --surface-color: var(--color-wabi-dark-surface);
+    --text-color: var(--color-wabi-dark-ink);
+    --text-muted: var(--color-wabi-dark-muted);
+    --border-color: var(--color-wabi-dark-border);
+  }
+
+  body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-family: var(--font-sans);
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+}
+
+.bento-card {
+  background-color: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 24px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.bento-card:hover {
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04);
+}
+
+.dark .bento-card {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+.dark .bento-card:hover {
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+}
+
+/* Custom scrollbar for a cleaner look */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+@keyframes shimmer {
+  0%   { transform: translateX(-100%); }
+  60%  { transform: translateX(100%); }
+  100% { transform: translateX(100%); }
+}

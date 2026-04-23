@@ -48,3 +48,58 @@ export const createProduct = async (payload: {
     method: 'POST',
     body: JSON.stringify(payload),
   })
+
+export const updateProduct = async (
+  id: string,
+  payload: {
+    sku: string
+    name: string
+    category: string
+    price: number
+    cost?: number | null
+    stock?: number
+    barcode?: string
+  },
+) =>
+  request(`/api/products/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  })
+
+export const deleteProduct = async (id: string) =>
+  request(`/api/products/${id}`, { method: 'DELETE' })
+
+export const searchCustomers = async (q?: string) =>
+  request(`/api/customers${q ? `?q=${encodeURIComponent(q)}` : ''}`)
+
+export const createCustomer = async (payload: { name: string; phone: string; email?: string }) =>
+  request('/api/customers', { method: 'POST', body: JSON.stringify(payload) })
+
+export const getSettings = async () => request('/api/onboarding/profile')
+
+export const saveSettings = async (payload: {
+  storeName?: string
+  address?: string
+  phone?: string
+  email?: string
+  currency?: string
+  taxRate?: number
+}) =>
+  request('/api/settings', {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  })
+
+export const getStaff = async () => request('/api/staff')
+
+export const updateStaff = async (id: number, payload: { is_active: boolean }) =>
+  request(`/api/staff/${id}`, { method: 'PUT', body: JSON.stringify(payload) })
+
+export const deleteStaff = async (id: number) =>
+  request(`/api/staff/${id}`, { method: 'DELETE' })
+
+export const getReportsSummary = async () => request('/api/reports/summary')
+
+export const getReportsProducts = async () => request('/api/reports/products')
+
+export const getReportsInventory = async () => request('/api/reports/inventory')

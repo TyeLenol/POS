@@ -11,7 +11,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-producti
 app.use(express.json())
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', process.env.CORS_ORIGIN || '*')
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS,PUT')
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization')
   if (req.method === 'OPTIONS') {
     res.sendStatus(204)
@@ -44,6 +44,12 @@ const managerOnly = (req, res, next) => {
     return res.status(403).json({ message: 'This action requires manager role' })
   }
   next()
+}
+
+const normalizePhone = (phone) => String(phone ?? '').replace(/\D/g, '')
+const trimOrNull = (value) => {
+  const trimmed = String(value ?? '').trim()
+  return trimmed.length > 0 ? trimmed : null
 }
 
 // Auth endpoint: login with username and password
@@ -362,9 +368,7 @@ app.post('/api/products', authMiddleware, async (req, res) => {
   const { sku, name, category, price, stock, barcode, cost } = req.body || {}
 
   if (!sku || !name || !category || !price) {
-    return res
-      .status(400)
-      .json({ message: 'SKU, name, category, and price are required' })
+    return res.status(400).json({ message: 'SKU, name, category, and price are required' })
   }
 
   try {
@@ -372,7 +376,15 @@ app.post('/api/products', authMiddleware, async (req, res) => {
       `INSERT INTO products (id, sku, name, category, price, stock, barcode, cost, is_active)
        VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, true)
        RETURNING id, sku, name, category, price, stock, barcode, cost`,
-      [sku, name, category, price, stock ? Number(stock) : 0, barcode || null, cost ? Number(cost) : null],
+      [
+        sku,
+        name,
+        category,
+        price,
+        stock ? Number(stock) : 0,
+        barcode || null,
+        cost ? Number(cost) : null,
+      ],
     )
 
     res.status(201).json({
@@ -387,6 +399,327 @@ app.post('/api/products', authMiddleware, async (req, res) => {
     } else {
       res.status(500).json({ message: error.message })
     }
+  }
+})
+
+app.put('/api/products/:id', authMiddleware, managerOnly, async (req, res) => {
+  const { id } = req.params
+  const { sku, name, category, price, stock, barcode, cost } = req.body || {}
+
+  if (!sku || !name || !category || price === undefined) {
+    return res.status(400).json({ message: 'SKU, name, category, and price are required' })
+  }
+
+  try {
+    const result = await pool.query(
+      `UPDATE products
+       SET sku = $1, name = $2, category = $3, price = $4, stock = $5,
+           barcode = $6, cost = $7, updated_at = now()
+       WHERE id = $8 AND is_active = true
+       RETURNING id, sku, name, category, price, stock, barcode, cost`,
+      [
+        sku,
+        name,
+        category,
+        price,
+        stock != null ? Number(stock) : 0,
+        barcode || null,
+        cost ? Number(cost) : null,
+        id,
+      ],
+    )
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Product not found' })
+    }
+
+    const row = result.rows[0]
+    res.json({
+      ...row,
+      price: Number(row.price),
+      stock: Number(row.stock),
+      cost: row.cost ? Number(row.cost) : null,
+    })
+  } catch (error) {
+    if (error.code === '23505') {
+      res.status(409).json({ message: 'SKU or barcode already exists' })
+    } else {
+      res.status(500).json({ message: error.message })
+    }
+  }
+})
+
+app.delete('/api/products/:id', authMiddleware, managerOnly, async (req, res) => {
+  const { id } = req.params
+
+  try {
+    const result = await pool.query(
+      'UPDATE products SET is_active = false, updated_at = now() WHERE id = $1 AND is_active = true RETURNING id',
+      [id],
+    )
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Product not found' })
+    }
+
+    res.json({ ok: true })
+  } catch (error) {
+    res.status(500).json({ message: error.message })
+  }
+})
+
+app.get('/api/customers', authMiddleware, async (req, res) => {
+  const { q } = req.query
+
+  try {
+    let result
+    if (q) {
+      result = await pool.query(
+        `SELECT id, name, phone, email, created_at
+         FROM customers
+         WHERE phone ILIKE $1 OR name ILIKE $1
+         ORDER BY created_at DESC
+         LIMIT 10`,
+        [`%${q}%`],
+      )
+    } else {
+      result = await pool.query(
+        `SELECT id, name, phone, email, created_at FROM customers ORDER BY created_at DESC LIMIT 50`,
+      )
+    }
+    res.json(result.rows)
+  } catch (error) {
+    res.status(500).json({ message: error.message })
+  }
+})
+
+app.post('/api/customers', authMiddleware, async (req, res) => {
+  const { name, phone, email } = req.body || {}
+  const customerName = trimOrNull(name)
+  const customerPhone = trimOrNull(phone)
+  const customerEmail = trimOrNull(email)
+
+  if (!customerName || !customerPhone) {
+    return res.status(400).json({ message: 'Name and phone are required' })
+  }
+
+  const normalizedPhone = normalizePhone(customerPhone)
+
+  if (!normalizedPhone) {
+    return res.status(400).json({ message: 'Phone number is required' })
+  }
+
+  try {
+    const existingResult = await pool.query(
+      `SELECT id, name, phone, email, created_at
+       FROM customers
+       WHERE regexp_replace(COALESCE(phone, ''), '\\D', '', 'g') = $1
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [normalizedPhone],
+    )
+
+    if (existingResult.rows.length > 0) {
+      const existing = existingResult.rows[0]
+      const result = await pool.query(
+        `UPDATE customers
+         SET name = COALESCE($1, name),
+             phone = COALESCE($2, phone),
+             email = COALESCE($3, email)
+         WHERE id = $4
+         RETURNING id, name, phone, email, created_at`,
+        [customerName, customerPhone, customerEmail, existing.id],
+      )
+      res.status(200).json(result.rows[0])
+      return
+    }
+
+    const result = await pool.query(
+      `INSERT INTO customers (name, phone, email)
+       VALUES ($1, $2, $3)
+       RETURNING id, name, phone, email, created_at`,
+      [customerName, customerPhone, customerEmail],
+    )
+    res.status(201).json(result.rows[0])
+  } catch (error) {
+    res.status(500).json({ message: error.message })
+  }
+})
+
+app.put('/api/settings', authMiddleware, managerOnly, async (req, res) => {
+  const { storeName, address, phone, email, currency, taxRate } = req.body || {}
+  try {
+    await pool.query(
+      `UPDATE business_profile
+       SET store_name = $1, address = $2, phone = $3, email = $4,
+           currency = $5, tax_rate = $6, updated_at = now()
+       WHERE id = 1`,
+      [
+        storeName || null,
+        address || null,
+        phone || null,
+        email || null,
+        currency || 'GHS',
+        taxRate ?? 0,
+      ],
+    )
+    res.json({ ok: true })
+  } catch (error) {
+    res.status(500).json({ message: error.message })
+  }
+})
+
+app.get('/api/staff', authMiddleware, managerOnly, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT id, username, role, is_active, first_name, last_name, email, phone, created_at
+       FROM users
+       ORDER BY role DESC, created_at ASC`,
+    )
+    res.json(result.rows)
+  } catch (error) {
+    res.status(500).json({ message: error.message })
+  }
+})
+
+app.put('/api/staff/:id', authMiddleware, managerOnly, async (req, res) => {
+  const { id } = req.params
+  const { is_active, first_name, last_name, email, role } = req.body || {}
+
+  if (String(req.user.id) === String(id)) {
+    return res.status(400).json({ message: 'Cannot modify your own account' })
+  }
+
+  if (role !== undefined && !['cashier', 'manager'].includes(role)) {
+    return res.status(400).json({ message: 'Role must be "cashier" or "manager"' })
+  }
+
+  try {
+    const result = await pool.query(
+      `UPDATE users
+       SET is_active  = COALESCE($1, is_active),
+           first_name = COALESCE($2, first_name),
+           last_name  = COALESCE($3, last_name),
+           email      = COALESCE($4, email),
+           role       = COALESCE($5, role)
+       WHERE id = $6
+       RETURNING id, username, role, is_active, first_name, last_name, email`,
+      [
+        is_active !== undefined ? Boolean(is_active) : null,
+        first_name || null,
+        last_name || null,
+        email || null,
+        role || null,
+        id,
+      ],
+    )
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Staff member not found' })
+    }
+    res.json(result.rows[0])
+  } catch (error) {
+    res.status(500).json({ message: error.message })
+  }
+})
+
+app.delete('/api/staff/:id', authMiddleware, managerOnly, async (req, res) => {
+  const { id } = req.params
+
+  if (String(req.user.id) === String(id)) {
+    return res.status(400).json({ message: 'Cannot delete your own account' })
+  }
+
+  try {
+    const result = await pool.query(
+      `UPDATE users SET is_active = false WHERE id = $1 RETURNING id`,
+      [id],
+    )
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Staff member not found' })
+    }
+    res.json({ ok: true })
+  } catch (error) {
+    res.status(500).json({ message: error.message })
+  }
+})
+
+app.get('/api/reports/summary', authMiddleware, managerOnly, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT
+        COUNT(DISTINCT o.id)::int AS order_count,
+        COALESCE(SUM(o.total), 0)::numeric AS total_revenue,
+        COALESCE(AVG(o.total), 0)::numeric AS avg_order,
+        COUNT(DISTINCT CASE WHEN o.created_at >= CURRENT_DATE THEN o.id END)::int AS today_orders,
+        COALESCE(SUM(CASE WHEN o.created_at >= CURRENT_DATE THEN o.total ELSE 0 END), 0)::numeric AS today_revenue,
+        COUNT(DISTINCT CASE WHEN o.created_at >= date_trunc('week', CURRENT_DATE) THEN o.id END)::int AS week_orders,
+        COALESCE(SUM(CASE WHEN o.created_at >= date_trunc('week', CURRENT_DATE) THEN o.total ELSE 0 END), 0)::numeric AS week_revenue
+      FROM orders o
+      WHERE o.status = 'paid'
+    `)
+    const row = result.rows[0]
+    res.json({
+      orderCount: row.order_count,
+      totalRevenue: Number(row.total_revenue),
+      avgOrder: Number(row.avg_order),
+      todayOrders: row.today_orders,
+      todayRevenue: Number(row.today_revenue),
+      weekOrders: row.week_orders,
+      weekRevenue: Number(row.week_revenue),
+    })
+  } catch (error) {
+    res.status(500).json({ message: error.message })
+  }
+})
+
+app.get('/api/reports/products', authMiddleware, managerOnly, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT
+        oi.name,
+        SUM(oi.quantity)::int AS total_qty,
+        COALESCE(SUM(oi.line_total), 0)::numeric AS total_revenue
+      FROM order_items oi
+      JOIN orders o ON o.id = oi.order_id
+      WHERE o.status = 'paid'
+      GROUP BY oi.name
+      ORDER BY total_qty DESC
+      LIMIT 10
+    `)
+    res.json(
+      result.rows.map((row) => ({
+        name: row.name,
+        totalQty: row.total_qty,
+        totalRevenue: Number(row.total_revenue),
+      })),
+    )
+  } catch (error) {
+    res.status(500).json({ message: error.message })
+  }
+})
+
+app.get('/api/reports/inventory', authMiddleware, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT id, sku, name, category, price, stock, barcode, cost
+      FROM products
+      WHERE is_active = true
+      ORDER BY stock ASC, name
+    `)
+    res.json(
+      result.rows.map((row) => ({
+        id: row.id,
+        sku: row.sku,
+        name: row.name,
+        category: row.category,
+        price: Number(row.price),
+        stock: Number(row.stock),
+        barcode: row.barcode,
+        cost: row.cost ? Number(row.cost) : null,
+      })),
+    )
+  } catch (error) {
+    res.status(500).json({ message: error.message })
   }
 })
 
@@ -414,13 +747,49 @@ app.post('/api/orders', authMiddleware, async (req, res) => {
 
     let customerId = null
     if (customer && (customer.name || customer.phone || customer.email)) {
-      const customerResult = await client.query(
-        `INSERT INTO customers (name, phone, email)
-         VALUES ($1, $2, $3)
-         RETURNING id`,
-        [customer.name || null, customer.phone || null, customer.email || null],
-      )
-      customerId = customerResult.rows[0].id
+      if (customer.phone) {
+        const normalizedPhone = normalizePhone(customer.phone)
+
+        if (normalizedPhone) {
+          const existingCustomer = await client.query(
+            `SELECT id, name, phone, email
+             FROM customers
+             WHERE regexp_replace(COALESCE(phone, ''), '\\D', '', 'g') = $1
+             ORDER BY created_at DESC
+             LIMIT 1
+             FOR UPDATE`,
+            [normalizedPhone],
+          )
+
+          if (existingCustomer.rows.length > 0) {
+            const customerRow = existingCustomer.rows[0]
+            await client.query(
+              `UPDATE customers
+               SET name = COALESCE($1, name),
+                   email = COALESCE($2, email)
+               WHERE id = $3`,
+              [trimOrNull(customer.name), trimOrNull(customer.email), customerRow.id],
+            )
+            customerId = customerRow.id
+          } else {
+            const customerResult = await client.query(
+              `INSERT INTO customers (name, phone, email)
+               VALUES ($1, $2, $3)
+               RETURNING id`,
+              [trimOrNull(customer.name), trimOrNull(customer.phone), trimOrNull(customer.email)],
+            )
+            customerId = customerResult.rows[0].id
+          }
+        }
+      } else {
+        const customerResult = await client.query(
+          `INSERT INTO customers (name, phone, email)
+           VALUES ($1, $2, $3)
+           RETURNING id`,
+          [trimOrNull(customer.name), null, trimOrNull(customer.email)],
+        )
+        customerId = customerResult.rows[0].id
+      }
     }
 
     const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, '')
@@ -458,6 +827,12 @@ app.post('/api/orders', authMiddleware, async (req, res) => {
           lineTotal,
         ],
       )
+      if (item.productId) {
+        await client.query(
+          'UPDATE products SET stock = GREATEST(stock - $1, 0), updated_at = now() WHERE id = $2',
+          [item.quantity || 0, item.productId],
+        )
+      }
     }
 
     await client.query(

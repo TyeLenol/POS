@@ -20,9 +20,10 @@ const router = createRouter({
       path: '/',
       redirect: () => {
         const authStore = useAuthStore()
-        return authStore.isAuthenticated ? '/dashboard' : '/login'
+        return authStore.isAuthenticated ? (authStore.isManager ? '/dashboard' : '/sales') : '/login'
       },
     },
+    // ── Manager-only routes ────────────────────────────────────────
     {
       path: '/dashboard',
       name: 'dashboard',
@@ -36,39 +37,15 @@ const router = createRouter({
       meta: { requiresAuth: true, requiresManager: true, hideShell: true },
     },
     {
-      path: '/sales',
-      name: 'sales',
-      component: () => import('../views/ProductsView.vue'),
-      meta: { requiresAuth: true, label: 'Customer Cart' },
-    },
-    {
-      path: '/inventory',
-      name: 'inventory',
-      component: () => import('../views/InventoryView.vue'),
-      meta: { requiresAuth: true },
-    },
-    {
-      path: '/checkout',
-      name: 'checkout',
-      component: () => import('../views/CheckoutView.vue'),
-      meta: { requiresAuth: true },
-    },
-    {
-      path: '/payments',
-      name: 'payments',
-      component: () => import('../views/PaymentsView.vue'),
-      meta: { requiresAuth: true },
-    },
-    {
-      path: '/receipts',
-      name: 'receipts',
-      component: () => import('../views/ReceiptsView.vue'),
-      meta: { requiresAuth: true },
-    },
-    {
       path: '/reports',
       name: 'reports',
       component: () => import('../views/ReportsView.vue'),
+      meta: { requiresAuth: true, requiresManager: true },
+    },
+    {
+      path: '/staff',
+      name: 'staff',
+      component: () => import('../views/StaffView.vue'),
       meta: { requiresAuth: true, requiresManager: true },
     },
     {
@@ -77,17 +54,45 @@ const router = createRouter({
       component: () => import('../views/SettingsView.vue'),
       meta: { requiresAuth: true, requiresManager: true },
     },
+    // ── Cashier-only routes ────────────────────────────────────────
+    {
+      path: '/sales',
+      name: 'sales',
+      component: () => import('../views/ProductsView.vue'),
+      meta: { requiresAuth: true, cashierOnly: true, fullHeight: true },
+    },
+    // ── Shared routes ──────────────────────────────────────────────
+    {
+      path: '/customers',
+      name: 'customers',
+      component: () => import('../views/CustomersView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/inventory',
+      name: 'inventory',
+      component: () => import('../views/InventoryView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/receipts',
+      name: 'receipts',
+      component: () => import('../views/ReceiptsView.vue'),
+      meta: { requiresAuth: true },
+    },
+    // ── Dead legacy routes → redirect ─────────────────────────────
+    { path: '/checkout', redirect: '/sales' },
+    { path: '/payments', redirect: '/sales' },
   ],
 })
 
-// Navigation Guard for authentication and authorization
-router.beforeEach(async (to, from, next) => {
+router.beforeEach(async (to, _from, next) => {
   const authStore = useAuthStore()
   const requiresAuth = to.meta.requiresAuth !== false
   const requiresManager = to.meta.requiresManager === true
+  const cashierOnly = to.meta.cashierOnly === true
   const isAuthRoute = to.path === '/login' || to.path === '/signup'
 
-  // If route requires auth but user is not authenticated, redirect to login
   if (requiresAuth && !authStore.isAuthenticated) {
     next('/login')
     return
@@ -98,12 +103,19 @@ router.beforeEach(async (to, from, next) => {
     return
   }
 
-  // If route requires manager role but user is cashier, redirect to sales
+  // Manager trying to access a cashier-only screen → send to dashboard
+  if (cashierOnly && authStore.isManager) {
+    next('/dashboard')
+    return
+  }
+
+  // Cashier trying to access a manager-only screen → send to sales
   if (requiresManager && authStore.isCashier) {
     next('/sales')
     return
   }
 
+  // Onboarding gate for managers
   if (authStore.isManager && authStore.isAuthenticated && to.path !== '/onboarding') {
     if (!authStore.onboardingCompleted) {
       await authStore.fetchOnboardingStatus()

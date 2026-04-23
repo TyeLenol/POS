@@ -10,13 +10,9 @@ interface User {
 export const useAuthStore = defineStore('auth', () => {
   // State
   const token = ref<string | null>(localStorage.getItem('authToken'))
-  const user = ref<User | null>(() => {
-    const stored = localStorage.getItem('authUser')
-    return stored ? JSON.parse(stored) : null
-  })
-  const onboardingCompleted = ref<boolean>(
-    localStorage.getItem('onboardingCompleted') === 'true',
-  )
+  const storedUser = localStorage.getItem('authUser')
+  const user = ref<User | null>(storedUser ? JSON.parse(storedUser) : null)
+  const onboardingCompleted = ref<boolean>(localStorage.getItem('onboardingCompleted') === 'true')
 
   // Computed
   const isAuthenticated = computed(() => !!token.value && !!user.value)
@@ -26,11 +22,14 @@ export const useAuthStore = defineStore('auth', () => {
   // Actions
   const login = async (username: string, password: string) => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
-      })
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/auth/login`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password }),
+        },
+      )
 
       if (!response.ok) {
         const error = await response.json()
@@ -74,11 +73,14 @@ export const useAuthStore = defineStore('auth', () => {
     email?: string
   }) => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/auth/signup`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/auth/signup`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        },
+      )
 
       if (!response.ok) {
         const error = await response.json()
@@ -166,14 +168,17 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/auth/users`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token.value}`,
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/auth/users`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token.value}`,
+          },
+          body: JSON.stringify({ username, password, role }),
         },
-        body: JSON.stringify({ username, password, role }),
-      })
+      )
 
       if (!response.ok) {
         const error = await response.json()

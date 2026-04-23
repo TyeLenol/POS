@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 
 import { sampleProducts } from '@/data/products'
-import { createOrder, getProducts, getReceipts, createProduct } from '@/api/pos'
+import { createOrder, getProducts, getReceipts, createProduct, updateProduct, deleteProduct } from '@/api/pos'
 import type {
   CartItem,
   CustomerInfo,
@@ -236,6 +236,8 @@ export const usePosStore = defineStore('pos', {
             category: newProduct.category,
             price: Number(newProduct.price),
             stock: Number(newProduct.stock || 0),
+            barcode: newProduct.barcode,
+            cost: newProduct.cost,
           })
           return true
         }
@@ -244,6 +246,50 @@ export const usePosStore = defineStore('pos', {
         throw error
       }
       return false
+    },
+    async updateProduct(
+      id: string,
+      productData: {
+        sku: string
+        name: string
+        category: string
+        price: number
+        cost?: number | null
+        stock?: number
+        barcode?: string
+      },
+    ) {
+      try {
+        const updated = await updateProduct(id, productData)
+        if (updated && updated.id) {
+          const index = this.products.findIndex((p) => p.id === id)
+          if (index !== -1) {
+            this.products[index] = {
+              ...this.products[index],
+              ...updated,
+              price: Number(updated.price),
+              stock: Number(updated.stock || 0),
+              cost: updated.cost ?? null,
+            }
+          }
+          return true
+        }
+      } catch (error) {
+        console.error('Failed to update product', error)
+        throw error
+      }
+      return false
+    },
+    async deleteProduct(id: string) {
+      try {
+        await deleteProduct(id)
+        this.products = this.products.filter((p) => p.id !== id)
+        this.cart = this.cart.filter((item) => item.product.id !== id)
+        return true
+      } catch (error) {
+        console.error('Failed to delete product', error)
+        throw error
+      }
     },
   },
 })

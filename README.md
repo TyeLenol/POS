@@ -29,6 +29,23 @@ See [Vite Configuration Reference](https://vite.dev/config/).
 npm install
 ```
 
+## Backend Setup
+
+Create a `.env` file in the project root:
+
+```
+DATABASE_URL=your_postgres_connection_string
+JWT_SECRET=change_me
+CORS_ORIGIN=http://localhost:5173
+```
+
+Initialize the database schema and seed data (run against your Postgres database):
+
+```
+psql "$DATABASE_URL" -f server/schema.sql
+psql "$DATABASE_URL" -f server/seed.sql
+```
+
 ### Compile and Hot-Reload for Development
 
 ```sh

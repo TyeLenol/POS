@@ -1,0 +1,450 @@
+Diagon Alley POS — UI Design & Development Brief
+1. Project Overview
+A web-based Point of Sale system for a retail shop. Built as a student project matching the specification in the course PDF. The system has two distinct user roles with completely separate workflows and screens. The backend and database are already built; only the frontend UI needs to be designed and implemented.
+
+Tech Stack (do not change)
+
+Frontend: Vue 3 + TypeScript + Vuetify 4 (Material Design component library)
+State management: Pinia
+Backend: Node.js / Express (port 4000)
+Database: PostgreSQL (hosted on Neon serverless)
+Auth: JWT tokens stored in localStorage
+Dev server: Vite (port 5173)
+Brand
+
+Name: Diagon Alley POS
+Primary accent: Amber/gold — #d97706 (strong), #f59e0b (mid), rgba(251,191,36,0.12) (soft background)
+Secondary: Indigo — #6366f1
+Navy: #1e3a5f
+Text ink: #111827
+Muted text: #6b7280
+Borders: #f3f4f6
+Font: System sans-serif; monospace font for prices/numbers
+Logo mark: "DA" in a rounded square with amber gradient
+2. User Roles & Access Rules
+Role	Gets access to	Blocked from
+Manager	Dashboard, Reports, Inventory, Receipts, Staff, Settings	Customer Cart (sales screen)
+Cashier	Customer Cart, Inventory, Receipts	Dashboard, Reports, Staff, Settings
+Enforcement rules:
+
+If a manager navigates to /sales → redirect to /dashboard
+If a cashier navigates to any manager route → redirect to /sales
+A new manager account must complete onboarding (store profile setup) before accessing the app — they are held at /onboarding until done
+The navigation sidebar shows different links per role (see Section 4)
+3. Application Shell (Authenticated Screens)
+Every authenticated screen shares a common shell with:
+
+Left sidebar (256px wide)
+
+Brand mark ("DA" amber square) + store name + "Point of Sale" subtitle at top
+Navigation links (role-filtered, see below)
+For cashiers only: "Open order" widget at the bottom of the nav showing the current cart total, item count, and a "New order" button
+Footer: "Sandbox mode" badge with a pulsing green dot + "Payments running in test mode."
+Top app bar (60px tall)
+
+Hamburger menu icon (mobile only, hidden on desktop)
+Page title (changes per route)
+Role chip: amber for "Manager", grey for "Cashier" — with a shield icon for managers
+User avatar circle (initials) → opens a dropdown menu with username, role, and a "Sign out" button in red
+Manager sidebar nav:
+
+(no label): Dashboard
+Analytics: Reports, Inventory, Receipts
+Admin: Staff, Settings
+Cashier sidebar nav:
+
+Operations: Customer Cart, Inventory, Receipts
+4. Screens
+Screen 1 — Login (/login)
+Role: Public (no auth required), shell hidden
+
+Layout: Two-column on desktop, single column on mobile
+
+Left panel (dark, ~45% width): Deep navy/dark background with radial amber glow effect. Shows the brand mark, app name, and 3–4 "feature pill" badges (e.g. "Role-based access", "Live inventory", "Receipt generation"). Decorative only.
+Right panel (white): Centered login form.
+Heading: "Welcome back"
+Subheading: "Sign in to your POS account"
+Username text field
+Password text field (show/hide toggle)
+Role selector: Two card-style toggle buttons — "Manager" (shield icon) and "Cashier" (badge icon). Active card highlights with amber border and checkmark badge. This is purely visual — the actual role comes from the server after login.
+"Sign in" primary button (full width)
+Error alert if login fails
+After login:
+
+Manager → checks onboarding status → goes to /onboarding if not complete, else /dashboard
+Cashier → goes to /sales
+Screen 2 — Onboarding (/onboarding)
+Role: Manager only, shell hidden (full-screen)
+
+A multi-step wizard (or single scrollable form) that collects:
+
+Store name
+Branch name
+Address
+Phone
+Email
+Currency (default: GHS)
+Tax rate (default: 0.075 = 7.5%)
+Tax label (default: VAT)
+After submission, sets onboarding_completed = true in the database and redirects to /dashboard.
+
+Screen 3 — Dashboard (/dashboard)
+Role: Manager only
+
+The manager's home screen. KPI-heavy, no cart or sales functionality at all.
+
+KPI row (4 cards):
+
+Today's Revenue — green icon, monospace number
+This Week's Revenue — blue icon
+All-Time Revenue — amber icon
+Average Order Value — purple icon
+Each card has: eyebrow label, large formatted currency number, small subtitle.
+
+Top Selling Products panel:
+
+Horizontal bar chart (CSS bars, no library needed)
+Each row: product name, units sold, currency total, percentage bar (amber gradient)
+Loads from /api/reports/products
+Snapshot row (2 cards):
+
+Staff count — clickable, links to /staff
+Low stock count — clickable, links to /inventory
+Low stock alert list:
+
+Top 5 items with stock below threshold
+Each row: product name, category chip, stock count in red if critical
+Quick navigation row:
+
+Icon buttons linking to: Reports, Inventory, Staff, Receipts, Settings
+No link to sales/cart — managers never go there
+Screen 4 — Customer Cart / Sales (/sales)
+Role: Cashier only
+
+The main working screen for a cashier. This is a two-panel layout on desktop, stacked on mobile.
+
+Left panel — Product catalog:
+
+Search bar at the top (filters products by name/SKU/barcode in real time)
+Category filter chips/tabs (All, Beverages, Snacks, etc.)
+Product grid: cards showing product name, category, price, stock badge
+Each card has an "Add to cart" button
+Out-of-stock products are greyed out and unclickable
+Loads from /api/products
+Right panel — Cart:
+
+Header: "Current Order"
+Line items: product name, quantity stepper (−/+), unit price, line total, remove button
+If cart is empty: empty state illustration + "Search for products to add them"
+Customer info section: name field, phone field (optional, for receipt)
+Order summary: Subtotal, Tax (VAT 7.5%), Total (bold, large)
+"Checkout" button — opens the checkout/payment flow
+Checkout flow (modal or bottom drawer):
+
+Step 1 — Payment method selection: Cash, Mobile Money (MoMo), USSD, Card
+Step 2 (depends on method):
+Cash: "Amount tendered" field → shows change due
+Mobile Money: Phone number field, network selector (MTN/Vodafone/AirtelTigo), reference number after confirmation
+USSD: Shows USSD code to dial, "Mark as paid" button
+Card: Reference number field
+Step 3 — Confirmation: Shows receipt preview, "Complete sale" button
+After completion: cart clears, receipt is saved, success state shown
+"New order" button in the sidebar widget also clears the cart.
+
+Screen 5 — Inventory (/inventory)
+Role: Both manager and cashier (shared)
+
+Header: "Inventory" title + "Add product" button — button is only visible to managers (hidden for cashiers via v-if="isManager").
+
+Summary stats row (manager only or always visible):
+
+Total products count
+Total stock value (sum of stock × cost)
+Low stock count (stock ≤ 5)
+Out-of-stock count (stock = 0)
+Product table:
+
+Columns: Product name, SKU, Category, Price, Cost, Stock (coloured: green if healthy, amber if low, red if zero), Barcode, Actions
+Actions column (manager only): Edit button, Delete button (with confirmation dialog)
+Search bar to filter by name/SKU
+Category filter dropdown
+Add/Edit product dialog (manager only):
+
+Fields: SKU*, Name*, Category*, Price*, Cost (optional), Stock quantity, Barcode (optional)
+Validation: required fields marked, price must be a positive number
+Save button, Cancel button
+Screen 6 — Receipts (/receipts)
+Role: Both manager and cashier (shared)
+
+Left/top — Receipt list:
+
+Table or card list: Receipt number, Date, Customer name (or "Walk-in"), Total, Payment method chip, Status chip (Paid/Failed)
+Search by receipt number or customer name
+Clicking a row selects it and shows the receipt preview
+Right/bottom — Receipt preview panel:
+
+Styled like a thermal receipt:
+Store name and address at the top
+Receipt number and date
+Line items: name, qty × price = total
+Divider
+Subtotal, Tax, Total
+Payment method
+"Thank you" footer
+"Print" button (triggers window.print())
+Screen 7 — Reports (/reports)
+Role: Manager only
+
+Three data sections, loaded from separate API calls:
+
+Section 1 — Summary KPIs (/api/reports/summary)
+
+Total orders, Total revenue, Average order value, Total tax collected
+Displayed as metric cards with coloured left borders
+Section 2 — Product Performance (/api/reports/products)
+
+Table: Product name, Units sold, Revenue, % of total revenue
+CSS horizontal bar chart showing relative sales volume per product
+Section 3 — Inventory Health (/api/reports/inventory)
+
+Table: Product name, Category, Current stock, Cost, Stock value, Status chip
+Sorted by status (critical first)
+Low stock threshold: ≤ 5 units
+Screen 8 — Staff Management (/staff)
+Role: Manager only
+
+Stat strip (4 cards):
+
+Total staff, Active staff, Manager count, Inactive count
+Staff table:
+
+Columns: User (avatar initials + username + full name), Role (chip — indigo for Manager, amber for Cashier), Status (coloured dot + "Active"/"Inactive"), Date added, Actions
+Current logged-in user's row: shows "You" badge, no action buttons
+Other rows: "Activate"/"Deactivate" toggle button + delete (trash icon) button
+Add staff button → opens a dialog:
+
+Username field
+Temporary password field
+Role picker: two card-style toggle buttons (Manager / Cashier) — same style as login role selector
+Create account button
+Confirmation dialogs:
+
+Deactivate: warns user won't be able to log in
+Activate: confirms reactivation
+Remove: warns permanent deactivation
+Calls POST /api/auth/users to create, PUT /api/staff/:id to toggle active, DELETE /api/staff/:id to remove.
+
+Screen 9 — Settings (/settings)
+Role: Manager only
+
+Three panels in a 7/5 column grid:
+
+Panel 1 — Business Information (left, wider)
+
+Fields: Store name, Branch, Address, Phone, Email
+"Save settings" button → calls PUT /api/settings
+Panel 2 — Checkout Defaults (right)
+
+Fields: Currency code (e.g. GHS), Locale (e.g. en-GH), Tax rate (decimal, e.g. 0.075), Tax label (e.g. VAT)
+Toggle switch: Enable/disable tax
+"Save" button
+Panel 3 — Payment Integrations (right, below Panel 2)
+
+Read-only status list: MoMo (Sandbox), USSD (Sandbox), Paystack (WIP)
+Chip status badges
+5. Complete User Workflows
+Workflow A — Cashier makes a sale
+Log in → lands on Customer Cart
+Search for product or browse grid → click "Add to cart"
+Repeat for multiple items; adjust quantities in cart
+(Optional) enter customer name + phone
+Click "Checkout"
+Select payment method (Cash / MoMo / USSD / Card)
+Enter payment details (tendered amount, phone number, etc.)
+Click "Confirm payment" → system posts to /api/orders
+Receipt is generated and appears in the Receipts list
+Cart clears automatically, ready for next sale
+Cashier can also click "New order" in the sidebar to reset mid-transaction
+Workflow B — Manager reviews performance
+Log in → lands on Dashboard
+Dashboard shows today's revenue, top sellers, low stock alerts
+Click "Reports" → sees full daily/weekly/product breakdown
+Click "Inventory" → sees all stock levels, edits products, adds new products
+Click "Staff" → adds a new cashier account or deactivates an inactive one
+Click "Settings" → updates store name, tax rate, or currency
+Workflow C — New manager first login (onboarding)
+Log in with manager credentials
+System checks /api/onboarding/status → not completed
+Router redirects to /onboarding (full-screen, no sidebar)
+Manager fills in store info and submits
+System saves to business_profile table, sets onboarding_completed = true
+Router sends manager to /dashboard
+Workflow D — Cashier checks a past receipt
+Log in → navigate to Receipts
+See list of all receipts in reverse chronological order
+Click any receipt → preview appears on the right
+Click "Print" to print the receipt
+6. Database Schema
+PostgreSQL on Neon (serverless). Tables:
+
+
+users
+  id              BIGSERIAL PK
+  username        TEXT UNIQUE NOT NULL
+  password_hash   TEXT                    ← bcrypt hashed
+  role            TEXT DEFAULT 'cashier'  ← 'cashier' | 'manager'
+  is_active       BOOLEAN DEFAULT true
+  first_name      TEXT
+  last_name       TEXT
+  phone           TEXT
+  email           TEXT
+  country         TEXT
+  created_at      TIMESTAMPTZ
+  updated_at      TIMESTAMPTZ
+
+business_profile                          ← singleton row (id = 1)
+  id              INTEGER PK
+  store_name      TEXT
+  address         TEXT
+  phone           TEXT
+  email           TEXT
+  currency        TEXT DEFAULT 'GHS'
+  tax_rate        NUMERIC(6,4) DEFAULT 0
+  onboarding_completed  BOOLEAN DEFAULT false
+  created_at      TIMESTAMPTZ
+  updated_at      TIMESTAMPTZ
+
+products
+  id              UUID PK (gen_random_uuid)
+  sku             TEXT UNIQUE NOT NULL
+  name            TEXT NOT NULL
+  category        TEXT NOT NULL
+  price           NUMERIC(12,2)
+  stock           INTEGER DEFAULT 0
+  barcode         TEXT UNIQUE
+  cost            NUMERIC(12,2)           ← purchase cost for margin calc
+  is_active       BOOLEAN DEFAULT true
+  created_at      TIMESTAMPTZ
+  updated_at      TIMESTAMPTZ
+
+customers
+  id              UUID PK
+  name            TEXT
+  phone           TEXT
+  email           TEXT
+  created_at      TIMESTAMPTZ
+
+orders                                    ← one row per completed transaction
+  id              UUID PK
+  order_number    TEXT UNIQUE
+  customer_id     UUID → customers.id
+  status          TEXT DEFAULT 'open'     ← 'open' | 'paid' | 'cancelled'
+  subtotal        NUMERIC(12,2)
+  tax             NUMERIC(12,2)
+  total           NUMERIC(12,2)
+  currency        TEXT DEFAULT 'GHS'
+  created_at      TIMESTAMPTZ
+
+order_items                               ← line items for each order
+  id              UUID PK
+  order_id        UUID → orders.id
+  product_id      UUID → products.id
+  sku             TEXT
+  name            TEXT
+  unit_price      NUMERIC(12,2)
+  quantity        INTEGER
+  line_total      NUMERIC(12,2)
+  created_at      TIMESTAMPTZ
+
+payments
+  id              UUID PK
+  order_id        UUID → orders.id
+  method          TEXT                    ← 'cash' | 'momo' | 'ussd' | 'card'
+  status          TEXT DEFAULT 'pending'  ← 'pending' | 'success' | 'failed'
+  reference       TEXT
+  amount          NUMERIC(12,2)
+  currency        TEXT DEFAULT 'GHS'
+  provider        TEXT
+  created_at      TIMESTAMPTZ
+
+receipts
+  id              UUID PK
+  order_id        UUID → orders.id
+  receipt_number  TEXT UNIQUE
+  total           NUMERIC(12,2)
+  status          TEXT DEFAULT 'paid'
+  issued_at       TIMESTAMPTZ
+7. API Endpoints
+All endpoints return JSON. Authenticated routes require Authorization: Bearer <token> header.
+
+Method	Path	Auth	Description
+POST	/api/auth/login	Public	Login — returns { token, user }
+POST	/api/auth/signup	Public	Register first manager account
+POST	/api/auth/users	Manager	Create staff account
+GET	/api/onboarding/status	Manager	Returns { onboardingCompleted: bool }
+POST	/api/onboarding/complete	Manager	Save store profile + mark onboarding done
+GET	/api/onboarding/profile	Manager	Get current business profile
+PUT	/api/settings	Manager	Update store profile / tax / currency
+GET	/api/products	Auth	Get all active products
+POST	/api/products	Manager	Create product
+PUT	/api/products/:id	Manager	Update product
+DELETE	/api/products/:id	Manager	Delete product
+GET	/api/customers	Auth	Search customers (query: ?q=)
+POST	/api/orders	Cashier	Place an order (cart → DB)
+GET	/api/receipts	Auth	Get all receipts (newest first)
+GET	/api/staff	Manager	Get all user accounts
+PUT	/api/staff/:id	Manager	Toggle is_active
+DELETE	/api/staff/:id	Manager	Soft-delete (deactivate) account
+GET	/api/reports/summary	Manager	Revenue totals, order count, avg order
+GET	/api/reports/products	Manager	Units sold + revenue per product
+GET	/api/reports/inventory	Manager	Stock levels, cost, value per product
+8. Key Business Rules the UI Must Enforce
+Managers cannot access /sales — no cart, no "Add to cart", no checkout
+Cashiers cannot access Dashboard, Reports, Staff, or Settings
+Only managers see the "Add product" / "Edit" / "Delete" buttons in Inventory
+A manager cannot deactivate or delete their own account (the API blocks it, but the UI should hide the buttons on the "You" row too)
+The cart widget in the sidebar is only rendered for cashiers
+Out-of-stock products (stock = 0) cannot be added to cart
+Tax is applied at the rate stored in business_profile.tax_rate (default 7.5%)
+Receipt numbers follow the format RC-YYYYMMDD-NNNN
+The "Sandbox mode" footer badge must always be visible — payments are not real
+All currency values are displayed using Intl.NumberFormat with the store's locale and currency settings
+9. Design System Tokens (existing CSS variables)
+The app defines these CSS custom properties globally — the UI should use them consistently:
+
+
+--pos-accent:         #f59e0b;
+--pos-accent-strong:  #d97706;
+--pos-accent-soft:    rgba(251, 191, 36, 0.12);
+--pos-navy:           #1e3a5f;
+--pos-ink:            #111827;
+--pos-muted:          #6b7280;
+--pos-border:         #f3f4f6;
+--pos-shadow:         rgba(0, 0, 0, 0.06);
+--pos-radius-lg:      18px;
+--pos-mono:           'JetBrains Mono', 'Fira Code', monospace;
+Vuetify theme colors:
+
+primary → amber (#d97706)
+secondary → indigo (#6366f1)
+10. What Is Already Built
+The backend is complete and working. The following Vue files exist and are functional but need a UI redesign:
+
+File	Status
+src/views/LoginView.vue	Done
+src/views/OnboardingView.vue	Done
+src/views/DashboardView.vue	Done (KPI dashboard)
+src/views/ProductsView.vue	Done (cashier cart)
+src/views/InventoryView.vue	Done
+src/views/ReceiptsView.vue	Done
+src/views/ReportsView.vue	Done
+src/views/StaffView.vue	Done
+src/views/SettingsView.vue	Done
+src/App.vue	Done (shell + nav)
+src/router/index.ts	Done (role guards)
+src/stores/auth.ts	Done
+src/stores/pos.ts	Done
+src/api/pos.ts	Done (all API calls)
+server/index.js	Done (all endpoints)
+server/schema.sql	Done (all tables)
+The UI developer's job is to redesign the .vue view files with a professional, modern interface. The logic, API calls, and state management inside those files should remain untouched — only the <template> and <style scoped> sections need work

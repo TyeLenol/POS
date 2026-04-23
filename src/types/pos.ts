@@ -9,6 +9,8 @@ export interface Product {
   sku: string
   price: number
   stock: number
+  barcode?: string
+  cost?: number | null
 }
 
 export interface CartItem {

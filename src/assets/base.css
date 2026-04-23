@@ -1,22 +1,46 @@
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=Space+Grotesk:wght@400;500;600;700&family=Urbanist:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 :root {
-  --pos-ink: #1f2937;
+  /* ── Brand accent ── */
+  --pos-accent: #f59e0b;
+  --pos-accent-strong: #d97706;
+  --pos-accent-soft: rgba(251, 191, 36, 0.12);
+
+  /* ── Neutrals ── */
+  --pos-navy: #1e3a5f;
+  --pos-ink: #2c2a29;
   --pos-muted: #6b7280;
-  --pos-border: #e5e7eb;
-  --pos-sand: #faf7f2;
+  --pos-border: #f3f4f6;
+  --pos-bg: #f9f8f6;
+  --pos-surface: #ffffff;
+  --pos-shadow: rgba(0, 0, 0, 0.02);
+
+  /* ── Semantic ── */
+  --pos-sand: #f9f8f6;
   --pos-card: #ffffff;
-  --pos-accent: #d97706;
-  --pos-accent-strong: #b45309;
-  --pos-accent-soft: #fef3c7;
-  --pos-navy: #1f2a44;
-  --pos-shadow: rgba(15, 23, 42, 0.08);
-  --pos-radius: 18px;
-  --pos-radius-lg: 26px;
   --pos-ring: rgba(217, 119, 6, 0.25);
-  --pos-mono:
-    'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
-    'Courier New', monospace;
+
+  /* ── Radius ── */
+  --pos-radius: 18px;
+  --pos-radius-lg: 24px;
+
+  /* ── Fonts ── */
+  --pos-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+  --pos-sans: 'Inter', system-ui, sans-serif;
+
+  /* ── React template token aliases ── */
+  --color-pos-accent-strong: var(--pos-accent-strong);
+  --color-pos-accent: var(--pos-accent);
+  --color-pos-accent-soft: var(--pos-accent-soft);
+  --color-pos-navy: var(--pos-navy);
+  --color-pos-ink: var(--pos-ink);
+  --color-pos-muted: var(--pos-muted);
+  --color-pos-border: var(--pos-border);
+  --bg-color: var(--pos-bg);
+  --surface-color: var(--pos-surface);
+  --text-color: var(--pos-ink);
+  --text-muted: var(--pos-muted);
+  --border-color: var(--pos-border);
 }
 
 *,
@@ -29,22 +53,63 @@
 body {
   min-height: 100vh;
   color: var(--pos-ink);
-  background:
-    radial-gradient(1000px 600px at 8% -10%, #fff1e6 0%, transparent 60%),
-    radial-gradient(900px 500px at 92% 8%, #fff7ed 0%, transparent 55%), var(--pos-sand);
+  background: var(--pos-bg);
   line-height: 1.6;
-  font-family: 'Urbanist', 'Space Grotesk', 'Segoe UI', system-ui, sans-serif;
+  font-family: var(--pos-sans);
   font-size: 15px;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* ── Global bento card ── */
+.bento-card {
+  background: var(--pos-surface);
+  border: 1px solid var(--pos-border);
+  border-radius: var(--pos-radius-lg);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+  transition:
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+
+.bento-card:hover {
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04);
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--pos-border);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--pos-muted);
+}
+
+/* ── Shimmer animation (login CTA) ── */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  60% {
+    transform: translateX(100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
 img {
   max-width: 100%;
   display: block;
 }
-
 a {
   color: inherit;
 }

@@ -1,6 +1,6 @@
 import './assets/main.css'
 import '@mdi/font/css/materialdesignicons.css'
-import 'vuetify/dist/vuetify.min.css'
+import 'vuetify/styles'
 
 import { createPinia } from 'pinia'
 import { createApp } from 'vue'
@@ -28,15 +28,15 @@ const vuetify = createVuetify({
       diagonLight: {
         dark: false,
         colors: {
-          background: '#faf7f2',
+          background: '#f9f8f6',
           surface: '#ffffff',
           primary: '#d97706',
-          secondary: '#1f2a44',
+          secondary: '#6366f1',
           tertiary: '#fef3c7',
-          info: '#1d4ed8',
-          success: '#15803d',
-          warning: '#b45309',
-          error: '#b91c1c',
+          info: '#3b82f6',
+          success: '#16a34a',
+          warning: '#d97706',
+          error: '#ef4444',
         },
       },
     },
