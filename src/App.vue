@@ -152,7 +152,7 @@ const handleLogout = () => {
           <button
             class="cart-new-btn"
             @click="
-              store.startNewOrder()
+              store.startNewOrder() ;
               mobileOpen = false
             "
           >
