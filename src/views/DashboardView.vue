@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
-import { getReportsInventory, getReportsProducts, getReportsSummary, getStaff } from '@/api/pos'
+import { getReportsInventory, getReportsProducts, getReportsSummary, getStaff } from '../../api/pos'
 import { useAuthStore } from '@/stores/auth'
 import { formatCurrency } from '@/utils/format'
 

@@ -2,7 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import VueApexCharts from 'vue3-apexcharts'
 import type { ApexOptions } from 'apexcharts'
-import { getReportsSummary, getReportsProducts, getReportsInventory } from '@/api/pos'
+import { getReportsSummary, getReportsProducts, getReportsInventory } from '../../api/pos'
 import { formatCurrency } from '@/utils/format'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
