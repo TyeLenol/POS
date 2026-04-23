@@ -442,8 +442,8 @@ const filteredProducts = computed(() => {
       return matchSearch && matchCategory && matchStock
     })
     .sort((a, b) => {
-      let av: string | number = a[sortField.value]
-      let bv: string | number = b[sortField.value]
+      let av: string | number = a[sortField.value] ?? 0
+      let bv: string | number = b[sortField.value] ?? 0
       if (typeof av === 'string') av = av.toLowerCase()
       if (typeof bv === 'string') bv = bv.toLowerCase()
       if (av < bv) return sortDir.value === 'asc' ? -1 : 1

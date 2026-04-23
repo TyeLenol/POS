@@ -92,7 +92,7 @@ export const saveSettings = async (payload: {
 
 export const getStaff = async () => request('/api/staff')
 
-export const updateStaff = async (id: number, payload: { is_active: boolean }) =>
+export const updateStaff = async (id: number, payload: { is_active: boolean; first_name?: string | null; last_name?: string | null; email?: string | null; role?: string }) =>
   request(`/api/staff/${id}`, { method: 'PUT', body: JSON.stringify(payload) })
 
 export const deleteStaff = async (id: number) =>

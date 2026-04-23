@@ -402,7 +402,7 @@ onMounted(() => {
             <template v-if="selectedCustomer">
               <div class="customer-found">
                 <div class="customer-avatar">
-                  {{ (selectedCustomer.name || '?')[0].toUpperCase() }}
+                  {{ (selectedCustomer.name || '?').charAt(0).toUpperCase() }}
                 </div>
                 <div class="customer-info-block">
                   <div class="customer-name">{{ selectedCustomer.name || 'Unnamed' }}</div>
@@ -432,7 +432,7 @@ onMounted(() => {
                   class="search-result"
                   @click="selectCustomer(c)"
                 >
-                  <div class="result-avatar">{{ (c.name || '?')[0].toUpperCase() }}</div>
+                  <div class="result-avatar">{{ (c.name || '?').charAt(0).toUpperCase() }}</div>
                   <div>
                     <div class="result-name">{{ c.name || 'Unnamed' }}</div>
                     <div class="result-phone">{{ c.phone }}</div>
